@@ -14,5 +14,5 @@ RUN cargo build --release
 # O servidor em Rust do EmulatorJS roda na porta 4000 por padrão
 EXPOSE 4000
 
-# Executar o binário compilado
-CMD ["./target/release/emulatorjs-netplay"]
+# Executar o binário compilado (o nome no Cargo.toml é rust-socket-server)
+CMD ["./target/release/rust-socket-server"]
