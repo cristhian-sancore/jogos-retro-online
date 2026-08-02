@@ -1,7 +1,8 @@
 version: '3.8'
 services:
   snes-web:
-    build: .
+    # A imagem agora vem do GitHub, já pronta e leve
+    image: ghcr.io/cristhian-sancore/jogos-retro-online-web:main
     ports:
       - "5000:5000"
     volumes:
@@ -17,9 +18,8 @@ services:
       - netplay
 
   netplay:
-    build:
-      context: .
-      dockerfile: Dockerfile.netplay
+    # A imagem compilada do Rust vem pronta do GitHub
+    image: ghcr.io/cristhian-sancore/jogos-retro-online-netplay:main
     ports:
       - "3000:3000"
     restart: unless-stopped
