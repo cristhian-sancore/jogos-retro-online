@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SNES Web Player</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <style>
+        .user-nav {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        .user-nav span { font-weight: bold; }
+        .logout-btn { color: #f87171; text-decoration: none; font-size: 0.9rem; }
+        
+        .achievements-panel {
+            margin-top: 4rem;
+            background: rgba(30, 41, 59, 0.4);
+            padding: 2rem;
+            border-radius: 16px;
+            border: 1px solid var(--border-color);
+        }
+        .achievements-panel h2 { margin-bottom: 1rem; color: #818cf8; }
+        .achievement-item {
+            background: rgba(0,0,0,0.2);
+            padding: 10px 15px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+        }
+    </style>
+</head>
+<body>
+    <div class="user-nav">
+        <span>Olá, {{ username }}!</span>
+        {% if is_admin %}
+        <a href="{{ url_for('admin') }}" class="logout-btn" style="color: #10b981;">Painel Admin</a>
+        {% endif %}
+        <a href="{{ url_for('logout') }}" class="logout-btn">Sair</a>
+    </div>
+
+    <div class="container">
+        <header>
+            <h1>SNES Web Player</h1>
+            <p>Seus jogos clássicos favoritos, direto no navegador.</p>
+        </header>
+
+        <main>
+            <div class="games-grid">
+                {% if games %}
+                    {% for game in games %}
+                    <div class="game-card" style="padding: 0; overflow: hidden; display: flex; flex-direction: column;">
+                        <img src="{{ url_for('static', filename='covers/' + game.cover_filename) }}" alt="Capa de {{ game.title }}" style="width: 100%; height: 200px; object-fit: cover; border-bottom: 1px solid rgba(255,255,255,0.1);">
+                        <div style="padding: 20px; display: flex; flex-direction: column; align-items: center; justify-content: space-between; flex-grow: 1;">
+                            <h3 style="margin-bottom: 15px; font-size: 1.1em; text-align: center;">{{ game.title }}</h3>
+                            <a href="{{ url_for('play', filename=game.filename) }}" class="play-btn" style="width: 100%;">Jogar</a>
+                        </div>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="no-games">
+                        <h2>Nenhum jogo encontrado</h2>
+                        {% if is_admin %}
+                        <p>Acesse o Painel Admin para fazer o upload do seu primeiro jogo e capa!</p>
+                        {% else %}
+                        <p>O administrador do site ainda não adicionou jogos.</p>
+                        {% endif %}
+                    </div>
+                {% endif %}
+            </div>
+
+            {% if achievements %}
+            <div class="achievements-panel">
+                <h2>Suas Últimas Conquistas 🏆</h2>
+                {% for ach in achievements %}
+                <div class="achievement-item">
+                    <strong>{{ ach[0] }}</strong>
+                    <span>{{ ach[1] }}</span>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+        </main>
+    </div>
+</body>
+</html>

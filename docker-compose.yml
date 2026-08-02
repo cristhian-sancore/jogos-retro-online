@@ -1,0 +1,25 @@
+version: '3.8'
+services:
+  snes-web:
+    build: .
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./roms:/app/roms
+      - ./database.db:/app/database.db
+      - ./saves:/app/saves
+      - ./covers:/app/static/covers
+    environment:
+      # Troque para o subdomínio que você vai configurar no Cloudflare Tunnel
+      - NETPLAY_URL=wss://netplay.SEUDOMINIO.com.br/
+    restart: unless-stopped
+    depends_on:
+      - netplay
+
+  netplay:
+    build:
+      context: .
+      dockerfile: Dockerfile.netplay
+    ports:
+      - "3000:3000"
+    restart: unless-stopped

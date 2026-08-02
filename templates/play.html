@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jogando: {{ name }}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body style="background: #0f172a;">
+    <div class="emulator-container">
+        <div class="emulator-header">
+            <a href="{{ url_for('index') }}" class="back-btn">
+                <span>&larr;</span> Voltar para a lista
+            </a>
+            <h2 style="color: white; font-size: 1.5rem;">{{ name }}</h2>
+        </div>
+        
+        <div id="game"></div>
+        
+        <!-- Toast de Conquista -->
+        <div id="achievement-toast" style="display:none; position:fixed; bottom:20px; right:20px; background:#4f46e5; color:white; padding:15px 25px; border-radius:10px; box-shadow:0 10px 15px -3px rgba(0,0,0,0.5); z-index:9999; transform: translateY(100px); transition: transform 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);">
+            <h3 style="margin-bottom:5px; font-size:16px;">🏆 Conquista Desbloqueada!</h3>
+            <p id="achievement-text" style="font-size:14px; margin:0;"></p>
+        </div>
+
+        <script>
+            EJS_player = '#game';
+            EJS_core = 'snes';
+            EJS_gameName = '{{ name }}';
+            EJS_color = '#6366f1';
+            EJS_startOnLoaded = true;
+            EJS_pathtodata = 'https://cdn.emulatorjs.org/stable/data/';
+            EJS_gameUrl = '{{ url_for("download_rom", filename=filename, _external=True) }}';
+            
+            // Habilitar o Multiplayer (Netplay) conectando ao nosso próprio servidor Docker
+            EJS_netplayUrl = "{{ netplay_url }}";
+
+            // Remover botões de Trapaça e Save State (Anti-cheat)
+            EJS_Buttons = {
+                saveState: false,
+                loadState: false,
+                cheat: false
+            };
+            
+            // Cloud Save - Carregar o save da nuvem se existir
+            // Usamos try-catch no backend para retornar 404 se não houver save,
+            // e o EmulatorJS lida bem se o arquivo não existir.
+            EJS_gameSaveUrl = '{{ url_for("download_save", filename=user_id|string + "_" + name + ".srm", _external=True) }}';
+
+            // Cloud Save - Fazer upload do save para a nuvem quando o jogador salvar
+            EJS_onSaveState = function(data) {
+                // EJS_onSaveState é chamado quando cria save state ou salva na SRAM dependendo do core.
+                // Mas para SRAM pura, EJS_onSave é melhor. Vamos usar EJS_onSaveSram
+                console.log("Tentando salvar estado...");
+            };
+
+            EJS_onSave = function(data) {
+                console.log("Jogo salvo! Enviando para a nuvem...");
+                // data é um Uint8Array contendo o SRAM
+                const blob = new Blob([data], { type: 'application/octet-stream' });
+                const formData = new FormData();
+                formData.append('game_name', '{{ name }}');
+                formData.append('save_data', blob, 'save.srm');
+
+                fetch('/api/save', {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        showAchievement("Progresso salvo na nuvem! ☁️");
+                    }
+                })
+                .catch(err => console.error("Erro ao salvar na nuvem:", err));
+            };
+
+            // Sistema de Conquistas via Screenshot (O Espião)
+            function showAchievement(text) {
+                const toast = document.getElementById('achievement-toast');
+                document.getElementById('achievement-text').innerText = text;
+                toast.style.display = 'block';
+                // Trigger animation
+                setTimeout(() => toast.style.transform = 'translateY(0)', 10);
+                // Hide after 5 seconds
+                setTimeout(() => {
+                    toast.style.transform = 'translateY(100px)';
+                    setTimeout(() => toast.style.display = 'none', 500);
+                }, 5000);
+            }
+
+            function checkAchievement() {
+                // Procura o canvas do jogo (EmulatorJS cria um canvas interno)
+                const canvas = document.querySelector('#game canvas');
+                if (!canvas) return;
+
+                try {
+                    const imageData = canvas.toDataURL('image/jpeg', 0.5); // Qualidade reduzida para enviar rápido
+                    
+                    fetch('/api/check_achievement', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            game_name: '{{ name }}',
+                            image_data: imageData
+                        })
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.unlocked) {
+                            showAchievement(data.achievement);
+                        }
+                    })
+                    .catch(err => console.error("Erro ao verificar conquista", err));
+
+                } catch(e) {
+                    // Segurança de CORS caso o canvas esteja sujo (tainted)
+                    console.log("Aguardando jogo iniciar...");
+                }
+            }
+
+            // Tira foto e verifica a cada 10 segundos para não sobrecarregar o servidor
+            setInterval(checkAchievement, 10000);
+
+        </script>
+        <script src="https://cdn.emulatorjs.org/stable/data/loader.js"></script>
+    </div>
+</body>
+</html>

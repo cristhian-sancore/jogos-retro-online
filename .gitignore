@@ -1,0 +1,19 @@
+# Banco de dados SQLite
+*.db
+database.db
+
+# Pastas de Arquivos Dinâmicos (Saves, ROMs, Imagens)
+roms/
+saves/
+static/covers/
+!static/covers/.gitkeep
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+.env
+
+# Outros
+.DS_Store

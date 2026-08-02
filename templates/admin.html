@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Painel Super Admin - SNES Cloud</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        .admin-container {
+            max-width: 1000px;
+            margin: 40px auto;
+            display: grid;
+            grid-template-columns: 1fr 2fr;
+            gap: 30px;
+        }
+        
+        .upload-card, .games-card {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            padding: 30px;
+        }
+
+        .upload-card h2, .games-card h2 {
+            margin-top: 0;
+            color: #fff;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 0.9em;
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 12px;
+            background: rgba(0, 0, 0, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            color: white;
+            font-size: 1em;
+            outline: none;
+            transition: 0.3s;
+        }
+
+        .form-control:focus {
+            border-color: #6366f1;
+            background: rgba(0, 0, 0, 0.4);
+        }
+        
+        /* Estilização para input type file */
+        input[type="file"] {
+            padding: 10px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 10px;
+            border: 1px dashed rgba(255,255,255,0.3);
+            cursor: pointer;
+        }
+
+        .btn-upload {
+            background: linear-gradient(135deg, #6366f1, #a855f7);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 10px;
+            font-weight: 600;
+            cursor: pointer;
+            width: 100%;
+            transition: 0.3s;
+            font-size: 1.1em;
+        }
+
+        .btn-upload:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(99, 102, 241, 0.3);
+        }
+
+        /* Tabela de Jogos */
+        .games-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .games-table th, .games-table td {
+            padding: 15px;
+            text-align: left;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            color: white;
+        }
+
+        .games-table th {
+            color: rgba(255, 255, 255, 0.6);
+            font-weight: 500;
+        }
+
+        .game-cover-mini {
+            width: 60px;
+            height: 40px;
+            object-fit: cover;
+            border-radius: 5px;
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+
+        .btn-delete {
+            background: rgba(239, 68, 68, 0.2);
+            color: #ef4444;
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            padding: 6px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+
+        .btn-delete:hover {
+            background: #ef4444;
+            color: white;
+        }
+
+        .flash-message {
+            background: rgba(16, 185, 129, 0.2);
+            border: 1px solid #10b981;
+            color: #10b981;
+            padding: 10px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .top-bar {
+            padding: 20px 40px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .top-bar a {
+            color: white;
+            text-decoration: none;
+            background: rgba(255,255,255,0.1);
+            padding: 8px 16px;
+            border-radius: 20px;
+            transition: 0.2s;
+        }
+        .top-bar a:hover {
+            background: rgba(255,255,255,0.2);
+        }
+
+        @media (max-width: 768px) {
+            .admin-container {
+                grid-template-columns: 1fr;
+                padding: 0 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="top-bar">
+        <h2><i class="fa-solid fa-shield-halved"></i> Painel Super Admin</h2>
+        <a href="{{ url_for('index') }}"><i class="fa-solid fa-arrow-left"></i> Voltar ao Site</a>
+    </div>
+
+    <div class="admin-container">
+        <!-- Coluna de Upload -->
+        <div class="upload-card">
+            <h2><i class="fa-solid fa-cloud-arrow-up"></i> Adicionar Jogo</h2>
+            
+            {% with messages = get_flashed_messages() %}
+                {% if messages %}
+                    {% for message in messages %}
+                        <div class="flash-message">{{ message }}</div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+
+            <form action="{{ url_for('admin_upload') }}" method="POST" enctype="multipart/form-data">
+                <div class="form-group">
+                    <label>Título do Jogo (ex: Super Mario World)</label>
+                    <input type="text" name="title" class="form-control" required placeholder="Digite o nome bonito">
+                </div>
+                
+                <div class="form-group">
+                    <label>Arquivo da ROM (.sfc ou .smc)</label>
+                    <input type="file" name="rom" class="form-control" accept=".sfc,.smc" required>
+                </div>
+
+                <div class="form-group">
+                    <label>Arte de Capa (.jpg ou .png)</label>
+                    <input type="file" name="cover" class="form-control" accept="image/jpeg,image/png" required>
+                </div>
+
+                <button type="submit" class="btn-upload"><i class="fa-solid fa-plus"></i> Salvar no Catálogo</button>
+            </form>
+        </div>
+
+        <!-- Coluna da Lista de Jogos -->
+        <div class="games-card">
+            <h2><i class="fa-solid fa-gamepad"></i> Catálogo Instalado</h2>
+            
+            <table class="games-table">
+                <thead>
+                    <tr>
+                        <th>Capa</th>
+                        <th>Título</th>
+                        <th>Arquivo</th>
+                        <th>Ação</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for game in games %}
+                    <tr>
+                        <td>
+                            <img src="{{ url_for('static', filename='covers/' + game.cover_filename) }}" class="game-cover-mini" alt="Capa">
+                        </td>
+                        <td><strong>{{ game.title }}</strong></td>
+                        <td><small>{{ game.filename }}</small></td>
+                        <td>
+                            <form action="{{ url_for('admin_delete', game_id=game.id) }}" method="POST" onsubmit="return confirm('Tem certeza que deseja apagar este jogo?');">
+                                <button type="submit" class="btn-delete"><i class="fa-solid fa-trash"></i></button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="4" style="text-align: center; color: rgba(255,255,255,0.5); padding: 30px;">
+                            Nenhum jogo instalado ainda.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</body>
+</html>
