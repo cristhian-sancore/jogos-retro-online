@@ -30,7 +30,7 @@
             EJS_color = '#6366f1';
             EJS_startOnLoaded = true;
             EJS_pathtodata = 'https://cdn.emulatorjs.org/stable/data/';
-            EJS_gameUrl = '{{ url_for("download_rom", filename=filename, _external=True) }}';
+            EJS_gameUrl = '{{ url_for("download_rom", filename=filename) }}';
             
             // Habilitar o Multiplayer (Netplay) conectando ao nosso próprio servidor Docker
             EJS_netplayUrl = "{{ netplay_url }}";
@@ -45,7 +45,7 @@
             // Cloud Save - Carregar o save da nuvem se existir
             // Usamos try-catch no backend para retornar 404 se não houver save,
             // e o EmulatorJS lida bem se o arquivo não existir.
-            EJS_gameSaveUrl = '{{ url_for("download_save", filename=user_id|string + "_" + name + ".srm", _external=True) }}';
+            EJS_gameSaveUrl = '{{ url_for("download_save", filename=user_id|string + "_" + name + ".srm") }}';
 
             // Cloud Save - Fazer upload do save para a nuvem quando o jogador salvar
             EJS_onSaveState = function(data) {
