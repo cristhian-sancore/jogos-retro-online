@@ -7,7 +7,7 @@ services:
       - "5000:5000"
     volumes:
       - ./roms:/app/roms
-      - ./database.db:/app/database.db
+      - ./data:/app/data
       - ./saves:/app/saves
       - ./covers:/app/static/covers
     environment:

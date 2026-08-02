@@ -15,16 +15,17 @@ app = Flask(__name__)
 app.secret_key = secrets.token_hex(16) 
 
 # Configurações
-BASE_DIR = os.path.dirname(os.path.abspath(__name__))
 ROMS_DIR = os.path.join(BASE_DIR, 'roms')
 SAVES_DIR = os.path.join(BASE_DIR, 'saves')
 COVERS_DIR = os.path.join(BASE_DIR, 'static', 'covers')
-DB_PATH = 'database.db'
+DATA_DIR = os.path.join(BASE_DIR, 'data')
+DB_PATH = os.path.join(DATA_DIR, 'database.db')
 
 # Garante que os diretórios existem
 os.makedirs(ROMS_DIR, exist_ok=True)
 os.makedirs(SAVES_DIR, exist_ok=True)
 os.makedirs(COVERS_DIR, exist_ok=True)
+os.makedirs(DATA_DIR, exist_ok=True)
 
 # Inicializa o banco de dados
 def init_db():
