@@ -35,11 +35,18 @@
             // Habilitar o Multiplayer (Netplay) conectando ao nosso próprio servidor Docker
             EJS_netplayUrl = "{{ netplay_url }}";
 
-            // Remover botões de Trapaça e Save State (Anti-cheat)
+            // Remover botões de Trapaça e Save State, mas manter o resto (incluindo Netplay)
             EJS_Buttons = {
+                playPause: true,
+                restart: true,
+                mute: true,
+                settings: true,
+                fullscreen: true,
                 saveState: false,
                 loadState: false,
-                cheat: false
+                cheat: false,
+                netplay: true,
+                controls: true
             };
             
             // Cloud Save - Carregar o save da nuvem se existir
