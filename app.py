@@ -15,6 +15,7 @@ app = Flask(__name__)
 app.secret_key = secrets.token_hex(16) 
 
 # Configurações
+BASE_DIR = os.path.dirname(os.path.abspath(__name__))
 ROMS_DIR = os.path.join(BASE_DIR, 'roms')
 SAVES_DIR = os.path.join(BASE_DIR, 'saves')
 COVERS_DIR = os.path.join(BASE_DIR, 'static', 'covers')
