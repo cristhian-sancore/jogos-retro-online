@@ -1,4 +1,4 @@
-FROM rust:1.75-slim
+FROM rust:slim
 
 # Instalar git e dependências de compilação C++ / OpenSSL (necessárias para compilar os pacotes do Rust)
 RUN apt-get update && apt-get install -y git build-essential pkg-config libssl-dev && rm -rf /var/lib/apt/lists/*
