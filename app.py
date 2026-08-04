@@ -358,7 +358,35 @@ def delete_save(filename):
 @admin_required
 def admin():
     games = get_games_list()
-    return render_template('admin.html', games=games)
+    
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    
+    c.execute('SELECT COUNT(*) FROM users')
+    total_users = c.fetchone()[0]
+    
+    c.execute('SELECT COUNT(*) FROM games')
+    total_games = c.fetchone()[0]
+    
+    try:
+        c.execute('SELECT COUNT(*) FROM reviews')
+        total_reviews = c.fetchone()[0]
+    except sqlite3.OperationalError:
+        total_reviews = 0
+        
+    c.execute('SELECT COUNT(*) FROM achievements')
+    total_achievements = c.fetchone()[0]
+    
+    conn.close()
+    
+    stats = {
+        'total_users': total_users,
+        'total_games': total_games,
+        'total_reviews': total_reviews,
+        'total_achievements': total_achievements
+    }
+    
+    return render_template('admin.html', games=games, stats=stats)
 
 @app.route('/admin/upload', methods=['POST'])
 @admin_required

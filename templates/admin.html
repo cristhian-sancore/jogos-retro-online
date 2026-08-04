@@ -15,6 +15,52 @@
             gap: 30px;
         }
         
+        .dashboard-container {
+            max-width: 1000px;
+            margin: 40px auto 0 auto;
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 20px;
+            padding: 0 20px;
+        }
+        
+        .stat-card {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 20px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        .stat-icon {
+            width: 50px;
+            height: 50px;
+            border-radius: 12px;
+            background: rgba(99, 102, 241, 0.2);
+            color: #6366f1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5em;
+        }
+        
+        .stat-info h3 {
+            margin: 0;
+            font-size: 2em;
+            color: white;
+        }
+        
+        .stat-info p {
+            margin: 0;
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 0.9em;
+            text-transform: uppercase;
+            font-weight: bold;
+        }
+        
         .upload-card, .games-card {
             background: rgba(255, 255, 255, 0.05);
             backdrop-filter: blur(10px);
@@ -186,6 +232,9 @@
                 grid-template-columns: 1fr;
                 padding: 0 20px;
             }
+            .dashboard-container {
+                grid-template-columns: 1fr 1fr;
+            }
         }
     </style>
 </head>
@@ -195,6 +244,37 @@
         <div>
             <a href="{{ url_for('admin_users') }}" style="margin-right: 10px; background: rgba(99, 102, 241, 0.2); color: #6366f1; border: 1px solid rgba(99, 102, 241, 0.3);"><i class="fa-solid fa-users-gear"></i> Usuários</a>
             <a href="{{ url_for('index') }}"><i class="fa-solid fa-arrow-left"></i> Voltar ao Site</a>
+        </div>
+    </div>
+
+    <div class="dashboard-container">
+        <div class="stat-card">
+            <div class="stat-icon"><i class="fa-solid fa-users"></i></div>
+            <div class="stat-info">
+                <h3>{{ stats.total_users }}</h3>
+                <p>Usuários</p>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon" style="color: #10b981; background: rgba(16, 185, 129, 0.2);"><i class="fa-solid fa-gamepad"></i></div>
+            <div class="stat-info">
+                <h3>{{ stats.total_games }}</h3>
+                <p>Jogos</p>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon" style="color: #fbbf24; background: rgba(251, 191, 36, 0.2);"><i class="fa-solid fa-star"></i></div>
+            <div class="stat-info">
+                <h3>{{ stats.total_reviews }}</h3>
+                <p>Avaliações</p>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon" style="color: #f43f5e; background: rgba(244, 63, 94, 0.2);"><i class="fa-solid fa-trophy"></i></div>
+            <div class="stat-info">
+                <h3>{{ stats.total_achievements }}</h3>
+                <p>Conquistas</p>
+            </div>
         </div>
     </div>
 
