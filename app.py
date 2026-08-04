@@ -58,6 +58,14 @@ def init_db():
                   filename TEXT NOT NULL,
                   cover_filename TEXT NOT NULL)''')
     
+    # Tabela de Favoritos
+    c.execute('''CREATE TABLE IF NOT EXISTS favorites
+                 (user_id INTEGER,
+                  game_id INTEGER,
+                  FOREIGN KEY (user_id) REFERENCES users (id),
+                  FOREIGN KEY (game_id) REFERENCES games (id),
+                  UNIQUE(user_id, game_id))''')
+    
     # Migrações seguras caso a tabela já exista sem as colunas novas
     try:
         c.execute('ALTER TABLE achievements ADD COLUMN user_id INTEGER')
@@ -85,15 +93,37 @@ def init_db():
     try: c.execute('ALTER TABLE users ADD COLUMN avatar_filename TEXT')
     except sqlite3.OperationalError: pass
 
+    # Auto-correção para administradores antigos que não tinham email (usam username@admin.com temporariamente)
+    try:
+        c.execute('UPDATE users SET email = username || "@admin.com" WHERE is_admin = 1 AND (email IS NULL OR email = "")')
+    except sqlite3.OperationalError:
+        pass
+
     conn.commit()
     conn.close()
 
 init_db()
 
-def get_games_list():
+def get_games_list(q=None, favs_only=False, user_id=None):
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
-    c.execute('SELECT id, title, filename, cover_filename FROM games ORDER BY title')
+    
+    query = 'SELECT id, title, filename, cover_filename FROM games'
+    params = []
+    
+    if favs_only and user_id:
+        query += ' INNER JOIN favorites ON games.id = favorites.game_id WHERE favorites.user_id = ?'
+        params.append(user_id)
+        if q:
+            query += ' AND games.title LIKE ?'
+            params.append(f'%{q}%')
+    elif q:
+        query += ' WHERE title LIKE ?'
+        params.append(f'%{q}%')
+        
+    query += ' ORDER BY title'
+    
+    c.execute(query, params)
     games_db = c.fetchall()
     conn.close()
     
@@ -375,15 +405,24 @@ def index():
     if 'user_id' not in session:
         return redirect(url_for('login'))
         
-    games = get_games_list()
-    # Pega as conquistas do usuário logado
+    q = request.args.get('q', '')
+    favs_only = request.args.get('favs_only') == '1'
+    user_id = session['user_id']
+    
+    games = get_games_list(q=q, favs_only=favs_only, user_id=user_id)
+    
+    # Pega as conquistas do usuário logado e favoritos
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
-    c.execute('SELECT game, achievement_name FROM achievements WHERE user_id = ? ORDER BY timestamp DESC LIMIT 10', (session['user_id'],))
+    c.execute('SELECT game, achievement_name FROM achievements WHERE user_id = ? ORDER BY timestamp DESC LIMIT 10', (user_id,))
     user_achievements = c.fetchall()
     
+    c.execute('SELECT game_id FROM favorites WHERE user_id = ?', (user_id,))
+    fav_rows = c.fetchall()
+    favorite_game_ids = [row[0] for row in fav_rows]
+    
     # Verifica se é admin para mostrar o botão do painel
-    c.execute('SELECT is_admin FROM users WHERE id = ?', (session['user_id'],))
+    c.execute('SELECT is_admin FROM users WHERE id = ?', (user_id,))
     row = c.fetchone()
     is_admin = bool(row[0]) if row else False
     
@@ -391,7 +430,31 @@ def index():
     
     avatar = session.get('avatar')
     
-    return render_template('index.html', games=games, achievements=user_achievements, username=session['username'], is_admin=is_admin, avatar=avatar)
+    return render_template('index.html', games=games, achievements=user_achievements, username=session['username'], is_admin=is_admin, avatar=avatar, favorite_game_ids=favorite_game_ids, q=q, favs_only=favs_only)
+
+@app.route('/api/favorite/<int:game_id>', methods=['POST'])
+def toggle_favorite(game_id):
+    if 'user_id' not in session:
+        return jsonify({"error": "Unauthorized"}), 401
+    
+    user_id = session['user_id']
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    
+    c.execute('SELECT 1 FROM favorites WHERE user_id = ? AND game_id = ?', (user_id, game_id))
+    exists = c.fetchone()
+    
+    is_favorite = False
+    if exists:
+        c.execute('DELETE FROM favorites WHERE user_id = ? AND game_id = ?', (user_id, game_id))
+    else:
+        c.execute('INSERT INTO favorites (user_id, game_id) VALUES (?, ?)', (user_id, game_id))
+        is_favorite = True
+        
+    conn.commit()
+    conn.close()
+    
+    return jsonify({"success": True, "is_favorite": is_favorite})
 
 @app.route('/play/<filename>')
 def play(filename):
