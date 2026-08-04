@@ -54,9 +54,14 @@
           {% endif %}
         {% endwith %}
 
-        <form method="POST">
-            <input type="text" name="username" placeholder="Nome de usuário" required>
+        <form method="POST" enctype="multipart/form-data">
+            <input type="text" name="full_name" placeholder="Nome Completo" required>
+            <input type="date" name="birthdate" placeholder="Data de Nascimento" required style="color: rgba(255,255,255,0.7);">
+            <input type="email" name="email" placeholder="E-mail" required>
+            <input type="text" name="username" placeholder="Nome de usuário (Apelido)" required>
             <input type="password" name="password" placeholder="Senha" required>
+            <div style="text-align: left; margin-bottom: 5px; font-size: 0.9em; color: rgba(255,255,255,0.8);">Foto de Perfil (Opcional):</div>
+            <input type="file" name="avatar" accept="image/*" style="padding: 10px; border: 1px dashed rgba(255,255,255,0.3); cursor: pointer;">
             <button type="submit">Cadastrar</button>
         </form>
         <p style="margin-top: 15px; font-size: 0.9rem;">

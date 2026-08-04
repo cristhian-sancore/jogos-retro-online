@@ -19,6 +19,7 @@ BASE_DIR = os.path.dirname(os.path.abspath(__name__))
 ROMS_DIR = os.path.join(BASE_DIR, 'roms')
 SAVES_DIR = os.path.join(BASE_DIR, 'saves')
 COVERS_DIR = os.path.join(BASE_DIR, 'static', 'covers')
+AVATARS_DIR = os.path.join(BASE_DIR, 'static', 'avatars')
 DATA_DIR = os.path.join(BASE_DIR, 'data')
 DB_PATH = os.path.join(DATA_DIR, 'database.db')
 
@@ -26,6 +27,7 @@ DB_PATH = os.path.join(DATA_DIR, 'database.db')
 os.makedirs(ROMS_DIR, exist_ok=True)
 os.makedirs(SAVES_DIR, exist_ok=True)
 os.makedirs(COVERS_DIR, exist_ok=True)
+os.makedirs(AVATARS_DIR, exist_ok=True)
 os.makedirs(DATA_DIR, exist_ok=True)
 
 # Inicializa o banco de dados
@@ -37,7 +39,8 @@ def init_db():
                  (id INTEGER PRIMARY KEY AUTOINCREMENT,
                   username TEXT UNIQUE NOT NULL,
                   password TEXT NOT NULL,
-                  is_admin BOOLEAN DEFAULT 0)''')
+                  is_admin BOOLEAN DEFAULT 0,
+                  is_banned BOOLEAN DEFAULT 0)''')
     
     # Tabela de Conquistas
     c.execute('''CREATE TABLE IF NOT EXISTS achievements
@@ -65,6 +68,23 @@ def init_db():
     except sqlite3.OperationalError:
         pass # Coluna já existe
 
+    try:
+        c.execute('ALTER TABLE users ADD COLUMN is_banned BOOLEAN DEFAULT 0')
+    except sqlite3.OperationalError:
+        pass # Coluna já existe
+
+    try: c.execute('ALTER TABLE users ADD COLUMN full_name TEXT')
+    except sqlite3.OperationalError: pass
+    
+    try: c.execute('ALTER TABLE users ADD COLUMN birthdate TEXT')
+    except sqlite3.OperationalError: pass
+    
+    try: c.execute('ALTER TABLE users ADD COLUMN email TEXT')
+    except sqlite3.OperationalError: pass
+    
+    try: c.execute('ALTER TABLE users ADD COLUMN avatar_filename TEXT')
+    except sqlite3.OperationalError: pass
+
     conn.commit()
     conn.close()
 
@@ -87,6 +107,25 @@ def get_games_list():
         })
     return games
 
+# HOOK GLOBAL PARA VERIFICAR BANIMENTO
+@app.before_request
+def check_banned():
+    # Ignorar rotas de arquivos estáticos e login/registro para não dar loop infinito
+    if request.endpoint in ['static', 'login', 'register']:
+        return
+
+    if 'user_id' in session:
+        conn = sqlite3.connect(DB_PATH)
+        c = conn.cursor()
+        c.execute('SELECT is_banned FROM users WHERE id = ?', (session['user_id'],))
+        row = c.fetchone()
+        conn.close()
+        
+        if row and row[0]:
+            session.clear()
+            flash('Sua conta foi banida pelo administrador.')
+            return redirect(url_for('login'))
+
 # DECORADOR SUPER ADMIN
 def admin_required(f):
     @wraps(f)
@@ -107,28 +146,38 @@ def admin_required(f):
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
-        username = request.form['username']
+        email = request.form['email']
         password = request.form['password']
         
         conn = sqlite3.connect(DB_PATH)
         c = conn.cursor()
-        c.execute('SELECT id, password FROM users WHERE username = ?', (username,))
+        c.execute('SELECT id, password, username, avatar_filename FROM users WHERE email = ?', (email,))
         user = c.fetchone()
         conn.close()
         
         if user and check_password_hash(user[1], password):
             session['user_id'] = user[0]
-            session['username'] = username
+            session['username'] = user[2]
+            session['avatar'] = user[3] if len(user) > 3 else None
             return redirect(url_for('index'))
         else:
-            flash('Usuário ou senha incorretos.')
+            flash('E-mail ou senha incorretos.')
     return render_template('login.html')
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
     if request.method == 'POST':
-        username = request.form['username']
-        password = request.form['password']
+        full_name = request.form.get('full_name')
+        birthdate = request.form.get('birthdate')
+        email = request.form.get('email')
+        username = request.form.get('username')
+        password = request.form.get('password')
+        avatar_file = request.files.get('avatar')
+        
+        avatar_filename = None
+        if avatar_file and avatar_file.filename:
+            avatar_filename = secure_filename(f"{username}_{avatar_file.filename}")
+            avatar_file.save(os.path.join(AVATARS_DIR, avatar_filename))
         
         conn = sqlite3.connect(DB_PATH)
         c = conn.cursor()
@@ -140,14 +189,17 @@ def register():
 
         try:
             hashed_pw = generate_password_hash(password)
-            c.execute('INSERT INTO users (username, password, is_admin) VALUES (?, ?, ?)', (username, hashed_pw, is_admin))
+            c.execute('''INSERT INTO users 
+                         (username, password, is_admin, full_name, birthdate, email, avatar_filename) 
+                         VALUES (?, ?, ?, ?, ?, ?, ?)''', 
+                      (username, hashed_pw, is_admin, full_name, birthdate, email, avatar_filename))
             conn.commit()
             conn.close()
             flash('Conta criada com sucesso! Faça login.')
             return redirect(url_for('login'))
         except sqlite3.IntegrityError:
             conn.close()
-            flash('Esse nome de usuário já existe.')
+            flash('E-mail ou nome de usuário já está em uso.')
             
     return render_template('register.html')
 
@@ -192,6 +244,66 @@ def admin_upload():
     flash("Jogo adicionado com sucesso!")
     return redirect(url_for('admin'))
 
+@app.route('/admin/edit/<int:game_id>', methods=['GET', 'POST'])
+@admin_required
+def admin_edit(game_id):
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    
+    if request.method == 'POST':
+        title = request.form.get('title')
+        rom_file = request.files.get('rom')
+        cover_file = request.files.get('cover')
+        
+        c.execute('SELECT filename, cover_filename FROM games WHERE id = ?', (game_id,))
+        row = c.fetchone()
+        
+        if not title:
+            flash("O título é obrigatório!")
+            return redirect(url_for('admin_edit', game_id=game_id))
+            
+        new_rom_filename = row[0]
+        new_cover_filename = row[1]
+        
+        if rom_file and rom_file.filename:
+            new_rom_filename = secure_filename(rom_file.filename)
+            rom_file.save(os.path.join(ROMS_DIR, new_rom_filename))
+            # Apagar a rom antiga se for diferente
+            if row[0] != new_rom_filename:
+                try: os.remove(os.path.join(ROMS_DIR, row[0]))
+                except OSError: pass
+                
+        if cover_file and cover_file.filename:
+            new_cover_filename = secure_filename(cover_file.filename)
+            cover_file.save(os.path.join(COVERS_DIR, new_cover_filename))
+            # Apagar a capa antiga se for diferente
+            if row[1] != new_cover_filename:
+                try: os.remove(os.path.join(COVERS_DIR, row[1]))
+                except OSError: pass
+                
+        c.execute('UPDATE games SET title = ?, filename = ?, cover_filename = ? WHERE id = ?',
+                  (title, new_rom_filename, new_cover_filename, game_id))
+        conn.commit()
+        conn.close()
+        
+        flash("Jogo atualizado com sucesso!")
+        return redirect(url_for('admin'))
+        
+    else:
+        c.execute('SELECT id, title, filename, cover_filename FROM games WHERE id = ?', (game_id,))
+        game = c.fetchone()
+        conn.close()
+        if not game:
+            abort(404)
+            
+        game_dict = {
+            'id': game[0],
+            'title': game[1],
+            'filename': game[2],
+            'cover_filename': game[3]
+        }
+        return render_template('admin_edit.html', game=game_dict)
+
 @app.route('/admin/delete/<int:game_id>', methods=['POST'])
 @admin_required
 def admin_delete(game_id):
@@ -211,6 +323,51 @@ def admin_delete(game_id):
     conn.close()
     flash("Jogo removido.")
     return redirect(url_for('admin'))
+
+@app.route('/admin/users')
+@admin_required
+def admin_users():
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    c.execute('SELECT id, username, is_admin, is_banned FROM users ORDER BY username')
+    users_db = c.fetchall()
+    conn.close()
+    
+    users = []
+    for u in users_db:
+        users.append({
+            'id': u[0],
+            'username': u[1],
+            'is_admin': u[2],
+            'is_banned': u[3]
+        })
+    return render_template('admin_users.html', users=users)
+
+@app.route('/admin/users/ban/<int:target_user_id>', methods=['POST'])
+@admin_required
+def admin_toggle_ban(target_user_id):
+    # Previne que o admin se bana
+    if target_user_id == session['user_id']:
+        flash("Você não pode banir a si mesmo!")
+        return redirect(url_for('admin_users'))
+        
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    
+    # Verifica o status atual
+    c.execute('SELECT is_banned FROM users WHERE id = ?', (target_user_id,))
+    row = c.fetchone()
+    if row:
+        new_status = 0 if row[0] else 1
+        c.execute('UPDATE users SET is_banned = ? WHERE id = ?', (new_status, target_user_id))
+        conn.commit()
+        if new_status:
+            flash("Usuário banido com sucesso.")
+        else:
+            flash("Usuário desbanido com sucesso.")
+            
+    conn.close()
+    return redirect(url_for('admin_users'))
 
 # ROTAS DO PAINEL E JOGOS
 @app.route('/')
@@ -232,7 +389,9 @@ def index():
     
     conn.close()
     
-    return render_template('index.html', games=games, achievements=user_achievements, username=session['username'], is_admin=is_admin)
+    avatar = session.get('avatar')
+    
+    return render_template('index.html', games=games, achievements=user_achievements, username=session['username'], is_admin=is_admin, avatar=avatar)
 
 @app.route('/play/<filename>')
 def play(filename):
