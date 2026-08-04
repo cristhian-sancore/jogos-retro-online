@@ -5,6 +5,59 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Jogando: {{ name }}</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        .reviews-section {
+            max-width: 800px;
+            margin: 40px auto;
+            padding: 20px;
+            color: white;
+        }
+        .review-card {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            display: flex;
+            gap: 15px;
+        }
+        .review-avatar {
+            width: 50px; height: 50px; border-radius: 50%; object-fit: cover; border: 2px solid #6366f1;
+        }
+        .review-avatar-placeholder {
+            width: 50px; height: 50px; border-radius: 50%; background: #6366f1;
+            display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 1.2rem;
+        }
+        .review-form {
+            background: rgba(0,0,0,0.3);
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 40px;
+        }
+        .star-rating {
+            display: flex; flex-direction: row-reverse; justify-content: flex-end;
+            margin-bottom: 15px;
+        }
+        .star-rating input { display: none; }
+        .star-rating label {
+            color: rgba(255,255,255,0.2); font-size: 30px; padding: 0 5px; cursor: pointer; transition: color 0.2s;
+        }
+        .star-rating input:checked ~ label,
+        .star-rating label:hover,
+        .star-rating label:hover ~ label { color: #fbbf24; }
+        .review-textarea {
+            width: 100%; padding: 15px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1);
+            background: rgba(0,0,0,0.2); color: white; resize: vertical; min-height: 100px; box-sizing: border-box;
+            margin-bottom: 15px; font-family: inherit;
+        }
+        .review-submit {
+            background: #6366f1; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: bold;
+        }
+        .review-submit:hover {
+            background: #4f46e5;
+        }
+    </style>
 </head>
 <body style="background: #0f172a;">
     <div class="emulator-container">
@@ -123,6 +176,70 @@
 
         </script>
         <script src="https://cdn.emulatorjs.org/stable/data/loader.js"></script>
+    </div>
+
+    <!-- Seção de Avaliações -->
+    <div class="reviews-section">
+        <h2><i class="fa-solid fa-star" style="color: #fbbf24;"></i> Avaliações do Jogo</h2>
+        
+        {% with messages = get_flashed_messages() %}
+            {% if messages %}
+                {% for message in messages %}
+                    <div style="background: rgba(16, 185, 129, 0.2); border: 1px solid #10b981; color: #10b981; padding: 10px; border-radius: 10px; margin-bottom: 20px; text-align: center;">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        {% if not user_review %}
+        <div class="review-form">
+            <h3 style="margin-top:0;">O que você achou de {{ name }}?</h3>
+            <form action="{{ url_for('add_review', game_id=game_id) }}" method="POST">
+                <div class="star-rating">
+                    <input type="radio" id="star5" name="rating" value="5" required /><label for="star5"><i class="fa-solid fa-star"></i></label>
+                    <input type="radio" id="star4" name="rating" value="4" /><label for="star4"><i class="fa-solid fa-star"></i></label>
+                    <input type="radio" id="star3" name="rating" value="3" /><label for="star3"><i class="fa-solid fa-star"></i></label>
+                    <input type="radio" id="star2" name="rating" value="2" /><label for="star2"><i class="fa-solid fa-star"></i></label>
+                    <input type="radio" id="star1" name="rating" value="1" /><label for="star1"><i class="fa-solid fa-star"></i></label>
+                </div>
+                <textarea name="comment" class="review-textarea" placeholder="Deixe seu comentário sobre o jogo... (Opcional)"></textarea>
+                <button type="submit" class="review-submit"><i class="fa-solid fa-paper-plane"></i> Enviar Avaliação</button>
+            </form>
+        </div>
+        {% else %}
+        <div class="review-form" style="border: 1px solid #10b981;">
+            <h3 style="margin-top:0;"><i class="fa-solid fa-check-circle" style="color: #10b981;"></i> Sua Avaliação</h3>
+            <div style="color: #fbbf24; margin-bottom: 10px;">
+                {% for i in range(user_review[0]) %}<i class="fa-solid fa-star"></i>{% endfor %}
+            </div>
+            <p style="color: rgba(255,255,255,0.8); margin-bottom: 0;">{{ user_review[1] }}</p>
+        </div>
+        {% endif %}
+
+        {% if reviews %}
+            {% for review in reviews %}
+            <div class="review-card">
+                <div>
+                    {% if review.avatar_filename %}
+                        <img src="{{ url_for('static', filename='avatars/' + review.avatar_filename) }}" class="review-avatar">
+                    {% else %}
+                        <div class="review-avatar-placeholder">{{ review.username[0]|upper }}</div>
+                    {% endif %}
+                </div>
+                <div style="flex-grow: 1;">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                        <strong style="font-size: 1.1em;">{{ review.username }}</strong>
+                        <span style="color: rgba(255,255,255,0.4); font-size: 0.9em;">{{ review.timestamp[:10] }}</span>
+                    </div>
+                    <div style="color: #fbbf24; margin-bottom: 10px; font-size: 0.9em;">
+                        {% for i in range(review.rating) %}<i class="fa-solid fa-star"></i>{% endfor %}
+                    </div>
+                    <p style="color: rgba(255,255,255,0.8); margin: 0; line-height: 1.5;">{{ review.comment }}</p>
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <p style="text-align: center; color: rgba(255,255,255,0.5); padding: 40px; background: rgba(0,0,0,0.2); border-radius: 12px;">Nenhuma avaliação ainda. Seja o primeiro a avaliar!</p>
+        {% endif %}
     </div>
 </body>
 </html>

@@ -65,6 +65,18 @@ def init_db():
                   FOREIGN KEY (user_id) REFERENCES users (id),
                   FOREIGN KEY (game_id) REFERENCES games (id),
                   UNIQUE(user_id, game_id))''')
+                  
+    # Tabela de Reviews
+    c.execute('''CREATE TABLE IF NOT EXISTS reviews
+                 (id INTEGER PRIMARY KEY AUTOINCREMENT,
+                  user_id INTEGER,
+                  game_id INTEGER,
+                  rating INTEGER,
+                  comment TEXT,
+                  timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+                  FOREIGN KEY (user_id) REFERENCES users (id),
+                  FOREIGN KEY (game_id) REFERENCES games (id),
+                  UNIQUE(user_id, game_id))''')
     
     # Migrações seguras caso a tabela já exista sem as colunas novas
     try:
@@ -108,7 +120,13 @@ def get_games_list(q=None, favs_only=False, user_id=None):
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
     
-    query = 'SELECT id, title, filename, cover_filename FROM games'
+    query = '''
+        SELECT games.id, games.title, games.filename, games.cover_filename,
+               IFNULL(AVG(reviews.rating), 0) as avg_rating,
+               COUNT(reviews.id) as review_count
+        FROM games
+        LEFT JOIN reviews ON games.id = reviews.game_id
+    '''
     params = []
     
     if favs_only and user_id:
@@ -118,10 +136,10 @@ def get_games_list(q=None, favs_only=False, user_id=None):
             query += ' AND games.title LIKE ?'
             params.append(f'%{q}%')
     elif q:
-        query += ' WHERE title LIKE ?'
+        query += ' WHERE games.title LIKE ?'
         params.append(f'%{q}%')
         
-    query += ' ORDER BY title'
+    query += ' GROUP BY games.id ORDER BY games.title'
     
     c.execute(query, params)
     games_db = c.fetchall()
@@ -133,7 +151,9 @@ def get_games_list(q=None, favs_only=False, user_id=None):
             'id': g[0],
             'title': g[1],
             'filename': g[2],
-            'cover_filename': g[3]
+            'cover_filename': g[3],
+            'avg_rating': round(g[4], 1),
+            'review_count': g[5]
         })
     return games
 
@@ -559,9 +579,70 @@ def play(filename):
     if not os.path.exists(os.path.join(ROMS_DIR, filename)):
         abort(404)
         
-    name = os.path.splitext(filename)[0]
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    c.execute('SELECT id, title FROM games WHERE filename = ?', (filename,))
+    game = c.fetchone()
+    if not game:
+        conn.close()
+        abort(404)
+        
+    game_id, game_title = game
+    
+    # Pega os reviews desse jogo
+    c.execute('''
+        SELECT users.username, users.avatar_filename, reviews.rating, reviews.comment, reviews.timestamp 
+        FROM reviews 
+        JOIN users ON reviews.user_id = users.id 
+        WHERE reviews.game_id = ? 
+        ORDER BY reviews.timestamp DESC
+    ''', (game_id,))
+    reviews_db = c.fetchall()
+    
+    # Verifica se o usuário atual já fez review
+    c.execute('SELECT rating, comment FROM reviews WHERE game_id = ? AND user_id = ?', (game_id, session['user_id']))
+    user_review = c.fetchone()
+    
+    conn.close()
+    
+    reviews = []
+    for r in reviews_db:
+        reviews.append({
+            'username': r[0],
+            'avatar_filename': r[1],
+            'rating': r[2],
+            'comment': r[3],
+            'timestamp': r[4]
+        })
+        
     netplay_url = os.environ.get('NETPLAY_URL', 'ws://' + request.host.split(':')[0] + ':3000/')
-    return render_template('play.html', filename=filename, name=name, user_id=session['user_id'], netplay_url=netplay_url)
+    return render_template('play.html', filename=filename, name=game_title, game_id=game_id, user_id=session['user_id'], netplay_url=netplay_url, reviews=reviews, user_review=user_review)
+
+@app.route('/api/review/<int:game_id>', methods=['POST'])
+def add_review(game_id):
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+        
+    rating = int(request.form.get('rating', 0))
+    comment = request.form.get('comment', '').strip()
+    user_id = session['user_id']
+    
+    if rating < 1 or rating > 5:
+        flash("Selecione uma nota válida (1 a 5 estrelas).")
+        return redirect(request.referrer)
+        
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    
+    try:
+        c.execute('INSERT INTO reviews (user_id, game_id, rating, comment) VALUES (?, ?, ?, ?)', (user_id, game_id, rating, comment))
+        conn.commit()
+        flash("Sua avaliação foi enviada com sucesso!")
+    except sqlite3.IntegrityError:
+        flash("Você já avaliou este jogo.")
+        
+    conn.close()
+    return redirect(request.referrer)
 
 
 # ARQUIVOS ESTÁTICOS E SAVES
