@@ -643,7 +643,12 @@ def play(filename):
             'timestamp': r[4]
         })
         
-    netplay_url = os.environ.get('NETPLAY_URL', 'ws://' + request.host.split(':')[0] + ':3000/')
+    netplay_url = os.environ.get('NETPLAY_URL', 'http://' + request.host.split(':')[0] + ':3000/')
+    if netplay_url.startswith('ws://'):
+        netplay_url = netplay_url.replace('ws://', 'http://', 1)
+    elif netplay_url.startswith('wss://'):
+        netplay_url = netplay_url.replace('wss://', 'https://', 1)
+        
     return render_template('play.html', filename=filename, name=game_title, game_id=game_id, user_id=session['user_id'], netplay_url=netplay_url, reviews=reviews, user_review=user_review)
 
 @app.route('/api/review/<int:game_id>', methods=['POST'])
