@@ -94,14 +94,16 @@
 </head>
 <body>
     <div class="user-nav">
-        {% if avatar %}
-            <img src="{{ url_for('static', filename='avatars/' + avatar) }}" alt="Avatar" style="width: 32px; height: 32px; border-radius: 50%; object-fit: cover; border: 1px solid rgba(255,255,255,0.2);">
-        {% else %}
-            <div style="width: 32px; height: 32px; border-radius: 50%; background: #6366f1; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 14px;">
-                {{ username[0]|upper }}
-            </div>
-        {% endif %}
-        <span>Olá, {{ username }}!</span>
+        <a href="{{ url_for('profile') }}" style="display: flex; align-items: center; gap: 10px; color: white; text-decoration: none; padding: 5px 10px; border-radius: 20px; transition: 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.1)'" onmouseout="this.style.background='transparent'" title="Meu Perfil">
+            {% if avatar %}
+                <img src="{{ url_for('static', filename='avatars/' + avatar) }}" class="user-avatar" alt="Avatar" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover; border: 2px solid var(--primary-color);">
+            {% else %}
+                <div class="user-avatar" style="width: 40px; height: 40px; border-radius: 50%; background: var(--primary-color); display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 1.2rem;">
+                    {{ username[0]|upper }}
+                </div>
+            {% endif %}
+            <span>Olá, {{ username }}!</span>
+        </a>
         {% if is_admin %}
         <a href="{{ url_for('admin') }}" class="logout-btn" style="color: #10b981;">Painel Admin</a>
         {% endif %}

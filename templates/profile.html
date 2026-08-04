@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Meu Perfil - SNES Cloud</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        .profile-container {
+            max-width: 1000px;
+            margin: 40px auto;
+            display: grid;
+            grid-template-columns: 1fr 2fr;
+            gap: 30px;
+            padding: 0 20px;
+        }
+        
+        .card {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            padding: 30px;
+        }
+
+        .card h2 {
+            margin-top: 0;
+            color: #fff;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 0.9em;
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 12px;
+            background: rgba(0, 0, 0, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            color: white;
+            font-size: 1em;
+            outline: none;
+            transition: 0.3s;
+            box-sizing: border-box;
+        }
+
+        .form-control:focus {
+            border-color: #6366f1;
+            background: rgba(0, 0, 0, 0.4);
+        }
+        
+        input[type="file"] {
+            padding: 10px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 10px;
+            border: 1px dashed rgba(255,255,255,0.3);
+            cursor: pointer;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #6366f1, #a855f7);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 10px;
+            font-weight: 600;
+            cursor: pointer;
+            width: 100%;
+            transition: 0.3s;
+            font-size: 1.1em;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(99, 102, 241, 0.3);
+        }
+
+        .flash-message {
+            background: rgba(16, 185, 129, 0.2);
+            border: 1px solid #10b981;
+            color: #10b981;
+            padding: 10px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .top-bar {
+            padding: 20px 40px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .top-bar a {
+            color: white;
+            text-decoration: none;
+            background: rgba(255,255,255,0.1);
+            padding: 8px 16px;
+            border-radius: 20px;
+            transition: 0.2s;
+        }
+        .top-bar a:hover {
+            background: rgba(255,255,255,0.2);
+        }
+        
+        .avatar-preview {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 3px solid rgba(255,255,255,0.2);
+            margin: 0 auto 20px;
+            display: block;
+        }
+
+        .avatar-placeholder {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            background: #6366f1;
+            color: white;
+            font-size: 48px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 20px;
+            font-weight: bold;
+        }
+
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 30px;
+        }
+        .data-table th, .data-table td {
+            padding: 12px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            text-align: left;
+        }
+        .data-table th { color: rgba(255,255,255,0.6); font-weight: normal; }
+        
+        .btn-delete {
+            background: rgba(239, 68, 68, 0.2);
+            color: #ef4444;
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            padding: 4px 8px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .btn-delete:hover { background: #ef4444; color: white; }
+        
+        @media (max-width: 768px) {
+            .profile-container { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <div class="top-bar">
+        <h2><i class="fa-solid fa-user"></i> Meu Perfil</h2>
+        <a href="{{ url_for('index') }}"><i class="fa-solid fa-arrow-left"></i> Voltar ao Site</a>
+    </div>
+
+    <div class="profile-container">
+        <!-- Coluna de Edição -->
+        <div class="card">
+            {% if user.avatar_filename %}
+                <img src="{{ url_for('static', filename='avatars/' + user.avatar_filename) }}" class="avatar-preview" alt="Avatar">
+            {% else %}
+                <div class="avatar-placeholder">{{ user.username[0]|upper }}</div>
+            {% endif %}
+            <h3 style="text-align: center; margin-top: 0;">{{ user.username }}</h3>
+
+            {% with messages = get_flashed_messages() %}
+                {% if messages %}
+                    {% for message in messages %}
+                        <div class="flash-message">{{ message }}</div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+
+            <form action="{{ url_for('profile') }}" method="POST" enctype="multipart/form-data" style="margin-top: 20px;">
+                <div class="form-group">
+                    <label>Nome Completo</label>
+                    <input type="text" name="full_name" class="form-control" value="{{ user.full_name or '' }}" required>
+                </div>
+                
+                <div class="form-group">
+                    <label>E-mail</label>
+                    <input type="email" name="email" class="form-control" value="{{ user.email or '' }}" required>
+                </div>
+
+                <div class="form-group">
+                    <label>Alterar Foto de Perfil</label>
+                    <input type="file" name="avatar" class="form-control" accept="image/*">
+                </div>
+
+                <div class="form-group">
+                    <label>Nova Senha (deixe em branco para manter a atual)</label>
+                    <input type="password" name="password" class="form-control">
+                </div>
+
+                <button type="submit" class="btn-primary"><i class="fa-solid fa-save"></i> Atualizar Perfil</button>
+            </form>
+        </div>
+
+        <!-- Coluna de Dados (Saves e Conquistas) -->
+        <div>
+            <div class="card" style="margin-bottom: 30px;">
+                <h2><i class="fa-solid fa-cloud-arrow-up"></i> Meus Saves na Nuvem</h2>
+                {% if saves %}
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Jogo</th>
+                            <th>Tamanho</th>
+                            <th>Ação</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for save in saves %}
+                        <tr>
+                            <td><strong>{{ save.game_name }}</strong></td>
+                            <td>{{ save.size }} KB</td>
+                            <td>
+                                <form action="{{ url_for('delete_save', filename=save.filename) }}" method="POST" onsubmit="return confirm('Tem certeza que deseja apagar este save na nuvem? Isso não pode ser desfeito.');" style="margin:0;">
+                                    <button type="submit" class="btn-delete" title="Apagar Save"><i class="fa-solid fa-trash"></i></button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {% else %}
+                <p style="color: rgba(255,255,255,0.6); text-align: center;">Você ainda não enviou nenhum save para a nuvem.</p>
+                {% endif %}
+            </div>
+
+            <div class="card">
+                <h2><i class="fa-solid fa-trophy" style="color: #fbbf24;"></i> Minhas Conquistas</h2>
+                {% if achievements %}
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Jogo</th>
+                            <th>Conquista</th>
+                            <th>Data</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for ach in achievements %}
+                        <tr>
+                            <td><strong>{{ ach[0] }}</strong></td>
+                            <td style="color: #fbbf24;">{{ ach[1] }} <i class="fa-solid fa-star"></i></td>
+                            <td style="color: rgba(255,255,255,0.5); font-size: 0.9em;">{{ ach[2][:10] }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {% else %}
+                <p style="color: rgba(255,255,255,0.6); text-align: center;">Jogue e chegue até o final para desbloquear conquistas!</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</body>
+</html>

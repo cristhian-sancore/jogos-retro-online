@@ -238,6 +238,101 @@ def logout():
     session.clear()
     return redirect(url_for('login'))
 
+# ROTAS DE PERFIL DO USUÁRIO
+@app.route('/profile', methods=['GET', 'POST'])
+def profile():
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+        
+    user_id = session['user_id']
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    
+    if request.method == 'POST':
+        full_name = request.form.get('full_name')
+        email = request.form.get('email')
+        password = request.form.get('password')
+        avatar_file = request.files.get('avatar')
+        
+        c.execute('SELECT avatar_filename, username FROM users WHERE id = ?', (user_id,))
+        row = c.fetchone()
+        current_avatar = row[0]
+        username = row[1]
+        
+        new_avatar_filename = current_avatar
+        if avatar_file and avatar_file.filename:
+            new_avatar_filename = secure_filename(f"{username}_{avatar_file.filename}")
+            avatar_file.save(os.path.join(AVATARS_DIR, new_avatar_filename))
+            session['avatar'] = new_avatar_filename
+            
+        if password: # Se enviou nova senha
+            hashed_pw = generate_password_hash(password)
+            c.execute('UPDATE users SET full_name = ?, email = ?, password = ?, avatar_filename = ? WHERE id = ?',
+                      (full_name, email, hashed_pw, new_avatar_filename, user_id))
+        else:
+            c.execute('UPDATE users SET full_name = ?, email = ?, avatar_filename = ? WHERE id = ?',
+                      (full_name, email, new_avatar_filename, user_id))
+            
+        try:
+            conn.commit()
+            flash("Perfil atualizado com sucesso!")
+        except sqlite3.IntegrityError:
+            flash("Este e-mail já está em uso por outra conta.")
+            
+        return redirect(url_for('profile'))
+        
+    # GET: Carregar dados
+    c.execute('SELECT username, full_name, email, birthdate, avatar_filename FROM users WHERE id = ?', (user_id,))
+    user = c.fetchone()
+    
+    # Carregar conquistas (todas)
+    c.execute('SELECT game, achievement_name, timestamp FROM achievements WHERE user_id = ? ORDER BY timestamp DESC', (user_id,))
+    achievements = c.fetchall()
+    conn.close()
+    
+    user_dict = {
+        'username': user[0],
+        'full_name': user[1],
+        'email': user[2],
+        'birthdate': user[3],
+        'avatar_filename': user[4]
+    }
+    
+    # Carregar saves
+    user_saves = []
+    prefix = f"{user_id}_"
+    if os.path.exists(SAVES_DIR):
+        for f in os.listdir(SAVES_DIR):
+            if f.startswith(prefix):
+                stat = os.stat(os.path.join(SAVES_DIR, f))
+                user_saves.append({
+                    'filename': f,
+                    'game_name': f.replace(prefix, '').replace('.srm', ''),
+                    'size': round(stat.st_size / 1024, 2), # KB
+                    'date': stat.st_mtime
+                })
+    # Ordenar saves por data (mais recentes primeiro)
+    user_saves.sort(key=lambda x: x['date'], reverse=True)
+    
+    return render_template('profile.html', user=user_dict, achievements=achievements, saves=user_saves)
+
+@app.route('/profile/delete_save/<filename>', methods=['POST'])
+def delete_save(filename):
+    if 'user_id' not in session:
+        abort(401)
+        
+    # Segurança: garantir que o usuário só apaga o próprio save
+    if not filename.startswith(f"{session['user_id']}_"):
+        abort(403)
+        
+    try:
+        os.remove(os.path.join(SAVES_DIR, filename))
+        flash("Save removido da nuvem.")
+    except OSError:
+        flash("Erro ao remover o save.")
+        
+    return redirect(url_for('profile'))
+
 # ROTAS DO PAINEL ADMIN
 @app.route('/admin')
 @admin_required
