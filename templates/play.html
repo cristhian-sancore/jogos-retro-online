@@ -168,7 +168,8 @@
             EJS_gameUrl = '{{ url_for("download_rom", filename=filename) }}';
             
             // Habilitar o Multiplayer (Netplay) conectando ao nosso próprio servidor Docker
-            EJS_netplayUrl = "{{ netplay_url }}";
+            EJS_netplayServer = "{{ netplay_url }}";
+            EJS_gameID = {{ game_id }};
 
             // Barra inferior padrão do emulador
             // (Removido EJS_Buttons customizado para evitar bug de sumiço da interface)
