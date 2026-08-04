@@ -57,84 +57,6 @@
         .review-submit:hover {
             background: #4f46e5;
         }
-
-        /* Multiplayer Modal */
-        .btn-multiplayer {
-            background: linear-gradient(135deg, #10b981, #059669);
-            color: white;
-            border: none;
-            padding: 8px 16px;
-            border-radius: 8px;
-            cursor: pointer;
-            font-weight: bold;
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            text-decoration: none;
-            transition: 0.2s;
-        }
-        .btn-multiplayer:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
-        }
-
-        .modal-overlay {
-            display: none;
-            position: fixed;
-            top: 0; left: 0; right: 0; bottom: 0;
-            background: rgba(0,0,0,0.8);
-            backdrop-filter: blur(5px);
-            z-index: 10000;
-            justify-content: center;
-            align-items: center;
-        }
-        .modal-content {
-            background: #1e293b;
-            border: 1px solid rgba(255,255,255,0.1);
-            border-radius: 16px;
-            padding: 30px;
-            max-width: 500px;
-            width: 90%;
-            color: white;
-            position: relative;
-        }
-        .modal-close {
-            position: absolute;
-            top: 15px; right: 15px;
-            background: none; border: none; color: rgba(255,255,255,0.5);
-            font-size: 24px; cursor: pointer;
-        }
-        .modal-close:hover { color: white; }
-        
-        .copy-link-container {
-            display: flex;
-            margin-top: 20px;
-            background: rgba(0,0,0,0.3);
-            border-radius: 8px;
-            border: 1px solid rgba(255,255,255,0.1);
-            overflow: hidden;
-        }
-        .copy-link-input {
-            flex-grow: 1;
-            background: none;
-            border: none;
-            padding: 12px;
-            color: white;
-            outline: none;
-            font-family: monospace;
-        }
-        .btn-copy {
-            background: #6366f1;
-            color: white;
-            border: none;
-            padding: 0 20px;
-            cursor: pointer;
-            font-weight: bold;
-            transition: 0.2s;
-        }
-        .btn-copy:hover {
-            background: #4f46e5;
-        }
     </style>
 </head>
 <body style="background: #0f172a;">
@@ -144,9 +66,7 @@
                 <span>&larr;</span> Voltar
             </a>
             <h2 style="color: white; font-size: 1.5rem; margin: 0; text-align: center;">{{ name }}</h2>
-            <button class="btn-multiplayer" onclick="openMultiplayerModal()">
-                <i class="fa-solid fa-globe"></i> Multiplayer Online
-            </button>
+            <div style="width: 120px;"></div>
         </div>
         
         <div id="game"></div>
@@ -156,8 +76,6 @@
             <h3 style="margin-bottom:5px; font-size:16px;">🏆 Conquista Desbloqueada!</h3>
             <p id="achievement-text" style="font-size:14px; margin:0;"></p>
         </div>
-        <!-- Carregar o Socket.IO para o Netplay funcionar -->
-        <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
         <script>
             EJS_player = '#game';
             EJS_core = 'snes';
@@ -166,14 +84,6 @@
             EJS_startOnLoaded = true;
             EJS_pathtodata = 'https://cdn.emulatorjs.org/stable/data/';
             EJS_gameUrl = '{{ url_for("download_rom", filename=filename) }}';
-            
-            // Habilitar o Multiplayer (Netplay) conectando ao nosso próprio servidor Docker
-            EJS_netplayServer = "{{ netplay_url }}";
-            EJS_gameID = {{ game_id }};
-            EJS_netplayICEServers = [ { urls: 'stun:stun.l.google.com:19302' } ];
-
-            // Barra inferior padrão do emulador
-            // (Removido EJS_Buttons customizado para evitar bug de sumiço da interface)
             
             // Cloud Save - Carregar o save da nuvem se existir
             // Usamos try-catch no backend para retornar 404 se não houver save,
@@ -324,53 +234,5 @@
             <p style="text-align: center; color: rgba(255,255,255,0.5); padding: 40px; background: rgba(0,0,0,0.2); border-radius: 12px;">Nenhuma avaliação ainda. Seja o primeiro a avaliar!</p>
         {% endif %}
     </div>
-
-    <!-- Modal Multiplayer -->
-    <div id="multiplayerModal" class="modal-overlay">
-        <div class="modal-content">
-            <button class="modal-close" onclick="closeMultiplayerModal()">&times;</button>
-            <h2 style="margin-top: 0; color: #10b981;"><i class="fa-solid fa-globe"></i> Jogar Online (Netplay)</h2>
-            <p>Siga os passos abaixo para jogar com um amigo:</p>
-            <ol style="line-height: 1.6; color: rgba(255,255,255,0.9);">
-                <li>Inicie o jogo no emulador.</li>
-                <li>Pressione <strong>ESC</strong> no teclado ou clique no <strong>ícone de Menu ( ≡ )</strong> no canto inferior direito do emulador.</li>
-                <li>Selecione <strong>Netplay</strong> e depois clique em <strong>Create Room</strong>.</li>
-                <li>Crie uma senha para a sala (opcional).</li>
-                <li>Envie o link abaixo para o seu amigo e diga para ele ir em <strong>Join Room</strong> e digitar a sua senha!</li>
-            </ol>
-            
-            <div class="copy-link-container">
-                <input type="text" id="inviteLink" class="copy-link-input" readonly>
-                <button class="btn-copy" onclick="copyInviteLink()"><i class="fa-solid fa-copy"></i> Copiar Link</button>
-            </div>
-            <p id="copy-feedback" style="display: none; color: #10b981; margin-top: 10px; font-size: 0.9em; text-align: center;">Link copiado com sucesso! Envie para o seu amigo.</p>
-        </div>
-    </div>
-
-    <script>
-        function openMultiplayerModal() {
-            document.getElementById('inviteLink').value = window.location.href;
-            document.getElementById('multiplayerModal').style.display = 'flex';
-        }
-        function closeMultiplayerModal() {
-            document.getElementById('multiplayerModal').style.display = 'none';
-        }
-        function copyInviteLink() {
-            const input = document.getElementById('inviteLink');
-            input.select();
-            document.execCommand('copy');
-            const feedback = document.getElementById('copy-feedback');
-            feedback.style.display = 'block';
-            setTimeout(() => feedback.style.display = 'none', 3000);
-        }
-        
-        // Fechar clicando fora
-        window.onclick = function(event) {
-            const modal = document.getElementById('multiplayerModal');
-            if (event.target == modal) {
-                closeMultiplayerModal();
-            }
-        }
-    </script>
 </body>
 </html>
